@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+starlette
+edge-tts 
+openai
+dotenv
+pydub
+langchain 
+langchain-openai
+sqlalchemy

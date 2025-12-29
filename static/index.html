@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Avatar Chat</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+
+        :root {
+            /* Light Theme Variables */
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 8px 32px 0 rgba(100, 100, 135, 0.15);
+            --primary-accent: #6C5DD3;
+            /* Keep the nice purple */
+            --text-color: #2D3436;
+            /* Darker grey for text */
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90%;
+            height: 90%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Access Screen */
+        #access-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(245, 247, 250, 0.95);
+            /* Light background */
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        #access-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .input-group {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--text-color);
+            font-size: 1rem;
+            width: 300px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 10px rgba(108, 93, 211, 0.2);
+        }
+
+        button.btn {
+            background: var(--primary-accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-left: 10px;
+            transition: transform 0.2s;
+        }
+
+        button.btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Split Layout */
+        .split-layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .avatar-section {
+            flex: 1;
+            position: relative;
+            /* Lighter radial for light theme */
+            background: radial-gradient(circle at center, rgba(108, 93, 211, 0.05) 0%, transparent 70%);
+        }
+
+        #avatar-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .chat-section {
+            flex: 0 0 400px;
+            background: rgba(255, 255, 255, 0.4);
+            /* Light semi-transparent */
+            border-left: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-right: 10px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--primary-accent);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-area {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            width: auto;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+    </style>
+    <!-- Import Three.js and GLTFLoader -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Validation Screen -->
+        <div id="access-screen">
+            <h1>Welcome Back</h1>
+            <p style="opacity: 0.7;">Enter your API Key to initialize the Avatar System</p>
+            <div class="input-group">
+                <input type="text" id="api-key-input" placeholder="sk-..." />
+                <button class="btn" type="button" onclick="validateKey(event)">Connect</button>
+            </div>
+            <p id="error-msg" style="color: #ff6b6b; margin-top: 10px; min-height: 20px;"></p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="split-layout">
+            <div class="avatar-section">
+                <canvas id="avatar-canvas"></canvas>
+            </div>
+            <div class="chat-section">
+                <div class="chat-history" id="chat-history">
+                    <!-- Messages will appear here -->
+                    <div class="message ai">Hello! I am ready to chat.</div>
+                </div>
+                <div class="input-area">
+                    <input type="text" id="user-input" placeholder="Type a message..." onkeypress="handleEnter(event)"
+                        disabled />
+                    <button class="btn" id="send-btn" onclick="sendMessage()" disabled>→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        let apiKeyId = null;
+        let scene, camera, renderer, mixer, model;
+        let clock = new THREE.Clock();
+
+        // Animation State
+        let currentAudio = null;
+        let lipSyncData = null; // { mouthCues: [] }
+        let headBone = null;
+        let morphTargetMesh = null;
+        let morphDict = {};
+
+        // Blinking State
+        let blinkTimer = 0;
+        let isBlinking = false;
+
+        // Idle State
+        let idleTime = 0;
+
+        // VISUAL MAPPINGS
+        // Rhubarb X, A-H to Blendshape Names
+        const VISEME_MAP = {
+            'A': 'viseme_PP',  // MBP
+            'B': 'viseme_kk',  // KST
+            'C': 'viseme_E',   // Eh/Ae
+            'D': 'viseme_aa',  // Aa
+            'E': 'viseme_O',   // Ao/Er
+            'F': 'viseme_U',   // Uw/Oy
+            'G': 'viseme_FF',  // F/V
+            'H': 'viseme_nn',  // L (approx)
+            'X': 'viseme_sil'  // Idle
+        };
+
+        // VALIDATION LOGIC
+        window.validateKey = async (event) => {
+            if (event) event.preventDefault();
+            const input = document.getElementById('api-key-input');
+            const btn = document.querySelector('#access-screen .btn');
+            const errorMsg = document.getElementById('error-msg');
+            const key = input.value.trim();
+
+            if (!key) return;
+
+            btn.disabled = true;
+            btn.innerText = "Verifying...";
+            errorMsg.innerText = "";
+
+            try {
+                const response = await fetch('/keys/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: key })
+                });
+
+                const contentType = response.headers.get("content-type");
+                let data;
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error("Non-JSON response:", text);
+                    throw new Error(`Server returned status ${response.status}. See console for details.`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Validation failed');
+                }
+
+                apiKeyId = data.id;
+
+                // Success transition
+                document.getElementById('access-screen').classList.add('hidden');
+                document.getElementById('user-input').disabled = false;
+                document.getElementById('send-btn').disabled = false;
+
+                // Initialize Avatar
+                initAvatar();
+
+            } catch (err) {
+                console.error("Validation error:", err);
+                errorMsg.innerText = err.message || "Connection failed";
+                btn.disabled = false;
+                btn.innerText = "Connect";
+            }
+        };
+
+        // CHAT LOGIC
+        window.handleEnter = (e) => {
+            if (e.key === 'Enter') sendMessage();
+        };
+
+        window.sendMessage = async () => {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text || !apiKeyId) return;
+
+            // UI Updates
+            addMessage(text, 'user');
+            input.value = '';
+            input.disabled = true;
+
+            try {
+                const response = await fetch('/chat/speak', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: text,
+                        api_key_id: apiKeyId,
+                        model: "gpt-3.5-turbo"
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to get response');
+
+                // Process Response
+                const aiText = response.headers.get('X-Response-Text');
+                const animationFile = response.headers.get('X-Animation-File');
+                const lipSyncHeader = response.headers.get('X-Lip-Sync-Data'); // Base64 encoded JSON
+
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                // Decode Lip Sync Data
+                if (lipSyncHeader) {
+                    try {
+                        const jsonStr = atob(lipSyncHeader);
+                        lipSyncData = JSON.parse(jsonStr);
+                        console.log("Lip Sync Data loaded:", lipSyncData);
+                    } catch (e) {
+                        console.error("Failed to parse lip sync data:", e);
+                    }
+                } else {
+                    lipSyncData = null;
+                }
+
+                addMessage(aiText || "...", 'ai');
+                playAudio(audioUrl, animationFile);
+
+            } catch (err) {
+                console.error(err);
+                addMessage("Error communicating with AI.", 'ai');
+            } finally {
+                input.disabled = false;
+                input.focus();
+            }
+        };
+
+        function addMessage(text, type) {
+            const history = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerText = text;
+            history.appendChild(div);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        // Animation Clips
+        let idleAction, talkAction;
+        let armBones = [];
+
+        // THREE.JS AVATAR SETUP
+        function initAvatar() {
+            const canvas = document.getElementById('avatar-canvas');
+            const section = document.querySelector('.avatar-section');
+
+            scene = new THREE.Scene();
+
+            // Camera - Zoomed out to see full body
+            camera = new THREE.PerspectiveCamera(45, section.clientWidth / section.clientHeight, 0.1, 100);
+            camera.position.set(0, 1.4, 3);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+            renderer.setSize(section.clientWidth, section.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+
+            // Lights
+            const ambient = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
+            scene.add(ambient);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(2, 2, 5);
+            scene.add(dirLight);
+
+            // Loader
+            const loader = new GLTFLoader();
+
+            // Load Animation First or Parallel? Let's load Avatar then Animation
+            loader.load('/static/avatar.glb', (gltf) => {
+                model = gltf.scene;
+                scene.add(model);
+
+                // Find Bones
+                model.traverse((node) => {
+                    if (node.isMesh && node.morphTargetDictionary) {
+                        morphTargetMesh = node;
+                        morphDict = node.morphTargetDictionary;
+                    }
+                    if (node.isBone) {
+                        if (node.name.includes("Head") || node.name.includes("head")) headBone = node;
+                        // Arm bones for lowering hands
+                        if (node.name.includes("LeftArm") || node.name.includes("RightArm")) armBones.push(node);
+                    }
+                });
+
+                // Fallbacks
+                if (!headBone) headBone = model.getObjectByName("Mixamorig_Head") || model.getObjectByName("Head");
+
+                // Lower Hands: Set to ~80 degrees for a more natural "arms by side" instead of 60
+                armBones.forEach(bone => {
+                    bone.rotation.z = Math.PI / 2.1;
+                    if (bone.name.includes("Right")) bone.rotation.z *= -1;
+                });
+
+                mixer = new THREE.AnimationMixer(model);
+
+                // Load Idle Animation (Weight Shift)
+                loader.load('/static/weight shift.glb', (idleGltf) => {
+                    const idleClip = idleGltf.animations[0];
+                    // Apply same filtering to Idle?
+                    // Usually we want Hips Position blocked so he doesn't walk away, but Rotation allowed for sway.
+                    // But our filter blocks ALL Hips. Let's reuse the filter for consistency for now.
+                    // Or keep it simple: If we block hips, weight shift might look like just upper body sway.
+                    // Let's try to apply the filter logic function if we had one.
+                    // For now, duplicate the filter logic for safety/speed or extract it?
+                    // Let's extract tracking filtering to a function to be clean.
+
+                    filterTracks(idleClip);
+
+                    idleAction = mixer.clipAction(idleClip);
+                    idleAction.setLoop(THREE.LoopRepeat);
+                    idleAction.play(); // Start Idle immediately
+                    console.log("Idle Animation Started");
+                });
+
+                // Load Talking Animation
+                loader.load('/static/Talking_2.glb', (animGltf) => {
+                    console.log("Talking Animation Loaded");
+                    if (animGltf.animations.length > 0) {
+                        const clip = animGltf.animations[0];
+
+                        // Retargeting / Track Renaming
+                        // RPM avatars usually use "Hips", "Spine", etc.
+                        // Mixamo animations usually use "mixamorig:Hips" or "Mixamorig_Hips"
+                        // We need to strip prefixes to match.
+
+                        filterTracks(clip); // Apply same filter
+
+                        talkAction = mixer.clipAction(clip);
+                        talkAction.setLoop(THREE.LoopRepeat);
+                        talkAction.clampWhenFinished = true;
+                        console.log("Animation Action Created");
+                    }
+                });
+
+                animate();
+            }, undefined, (err) => {
+                console.error('An error happened loading the avatar:', err);
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = section.clientWidth / section.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(section.clientWidth, section.clientHeight);
+            });
+        }
+
+        // Helper to filter tracks (Replaces duplicated logic)
+        function filterTracks(clip) {
+            clip.tracks.forEach(track => {
+                let name = track.name;
+                const parts = name.split('.');
+                const prop = parts.pop();
+                let boneName = parts.join('.');
+
+                let simplifiedName = boneName.replace(/.*[:\.]?mixamorig:?/i, "");
+
+                let foundBone = null;
+                model.traverse(node => {
+                    if (node.isBone && node.name.endsWith(simplifiedName)) {
+                        if (node.name === simplifiedName) foundBone = node;
+                        else if (!foundBone) foundBone = node;
+                    }
+                });
+
+                if (foundBone) track.name = foundBone.name + '.' + prop;
+                else track.name = simplifiedName + '.' + prop;
+            });
+
+            clip.tracks = clip.tracks.filter(track => {
+                const name = track.name.toLowerCase();
+                const isRoot = name.includes("hips") || name.includes("root") || name.includes("mixamorig:hips") || name.includes("mixamorig_hips");
+                if (isRoot) return false; // Block Root for now to prevent drifting
+                if (name.endsWith(".position") || name.endsWith(".scale")) return false;
+                return true;
+            });
+        }
+
+        // Exposed for manual testing
+        window.testAnimation = function () {
+            if (!talkAction) {
+                console.warn("Animation not loaded yet!");
+                return;
+            }
+            console.log("Testing Animation...");
+            if (idleAction) idleAction.fadeOut(0.5);
+            talkAction.reset().fadeIn(0.5).play();
+
+            // Stop after 3 seconds
+            setTimeout(() => {
+                talkAction.fadeOut(0.5);
+                console.log("Test ended.");
+                if (idleAction) idleAction.reset().fadeIn(0.5).play();
+            }, 3000);
+        };
+
+        // Reusable Helper for Loading and Playing Animations
+        async function loadAndPrepareAnimation(animationUrl) {
+            return new Promise((resolve, reject) => {
+                const loader = new GLTFLoader();
+                loader.load(animationUrl, (animGltf) => {
+                    if (animGltf.animations.length === 0) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const clip = animGltf.animations[0];
+
+                    filterTracks(clip);
+
+                    const action = mixer.clipAction(clip);
+                    action.setLoop(THREE.LoopRepeat);
+                    action.clampWhenFinished = true;
+                    resolve(action);
+                }, undefined, (err) => {
+                    console.error("Failed to load animation: " + animationUrl, err);
+                    resolve(null);
+                });
+            });
+        }
+
+        // Helper to manage animation transitions
+        let activeGestureAction = null;
+
+        async function playAudio(url, animationName) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+
+            // Cleanup previous gesture if valid
+            if (activeGestureAction) {
+                activeGestureAction.fadeOut(0.5);
+                activeGestureAction = null;
+            }
+
+            if (talkAction) talkAction.stop();
+
+            // Fade out idle
+            if (idleAction) idleAction.fadeOut(0.5);
+
+            currentAudio = new Audio(url);
+
+            // Prepare Animation
+            let specificAction = null;
+            if (animationName && animationName !== "null" && animationName !== "undefined") {
+                const fullPath = '/static/' + animationName;
+                specificAction = await loadAndPrepareAnimation(fullPath);
+            }
+
+            // Play Logic
+            if (specificAction) {
+                console.log("Playing specific animation (Once)");
+                specificAction.reset();
+                specificAction.setLoop(THREE.LoopOnce);
+                specificAction.clampWhenFinished = true;
+                specificAction.fadeIn(0.5).play();
+                activeGestureAction = specificAction;
+                mixer.addEventListener('finished', onGestureFinished);
+            } else {
+                console.log("No specific animation, defaulting to Talking_2");
+                if (talkAction) talkAction.reset().fadeIn(0.5).play();
+            }
+
+            currentAudio.play().catch(e => console.error("Playback failed:", e));
+
+            // Define the listener function so we can remove it later
+            function onGestureFinished(e) {
+                if (e.action === specificAction) {
+                    console.log("Gesture finished, switching to Talking_2 fallback");
+                    if (currentAudio && !currentAudio.paused) {
+                        specificAction.fadeOut(0.5);
+                        if (talkAction) talkAction.reset().fadeIn(0.5).play();
+                    }
+                    mixer.removeEventListener('finished', onGestureFinished);
+                }
+            }
+
+            // Cleanup on Audio End
+            currentAudio.onended = () => {
+                console.log("Audio ended, cleaning up");
+                resetMouth();
+                currentAudio = null;
+
+                // Stop whatever is playing
+                if (talkAction) talkAction.fadeOut(0.5);
+                if (activeGestureAction) activeGestureAction.fadeOut(0.5);
+
+                // Resume Idle
+                if (idleAction) idleAction.reset().fadeIn(0.5).play();
+
+                mixer.removeEventListener('finished', onGestureFinished);
+                activeGestureAction = null;
+            };
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            updateLipSync();
+            updateBlinking(delta);
+            updateIdleHead(delta); // Keep head sway mixed in
+
+            renderer.render(scene, camera);
+        }
+
+        // ANIMATION SYSTEMS
+
+        function updateLipSync() {
+            if (!currentAudio || currentAudio.paused || !lipSyncData || !morphTargetMesh) {
+                if (!currentAudio || currentAudio.paused) resetMouth();
+                return;
+            }
+
+            const currentTime = currentAudio.currentTime;
+
+            // Find current cue
+            const cue = lipSyncData.mouthCues.find(c => currentTime >= c.start && currentTime <= c.end);
+
+            // Decaying smoothing for all visemes
+            const targetViseme = cue ? VISEME_MAP[cue.value] : 'viseme_sil';
+
+            // Smoothly interpolate weights
+            for (const key in VISEME_MAP) {
+                const viseme = VISEME_MAP[key];
+                if (!viseme || !(viseme in morphDict)) continue;
+
+                const index = morphDict[viseme];
+                const targetWeight = (viseme === targetViseme) ? 1.0 : 0.0;
+                const currentWeight = morphTargetMesh.morphTargetInfluences[index];
+
+                // Lerp formula: current + (target - current) * speed
+                morphTargetMesh.morphTargetInfluences[index] = THREE.MathUtils.lerp(currentWeight, targetWeight, 0.4);
+            }
+        }
+
+        function resetMouth() {
+            if (!morphTargetMesh) return;
+            for (const key in VISEME_MAP) {
+                const viseme = VISEME_MAP[key];
+                if (viseme in morphDict) {
+                    const index = morphDict[viseme];
+                    morphTargetMesh.morphTargetInfluences[index] = THREE.MathUtils.lerp(morphTargetMesh.morphTargetInfluences[index], 0, 0.2);
+                }
+            }
+        }
+
+        function updateBlinking(dt) {
+            if (!morphTargetMesh || !("eyesClosed" in morphDict)) return;
+
+            blinkTimer -= dt;
+            const eyeIndex = morphDict["eyesClosed"];
+
+            if (blinkTimer <= 0) {
+                // Start blink
+                blinkTimer = Math.random() * 4 + 2;
+                isBlinking = true;
+            }
+
+            if (isBlinking) {
+                const blinkSpeed = 15;
+
+                if (!morphTargetMesh.userData.isOpening) {
+                    morphTargetMesh.morphTargetInfluences[eyeIndex] += dt * blinkSpeed;
+                    if (morphTargetMesh.morphTargetInfluences[eyeIndex] >= 1) {
+                        morphTargetMesh.morphTargetInfluences[eyeIndex] = 1;
+                        morphTargetMesh.userData.isOpening = true;
+                    }
+                } else {
+                    morphTargetMesh.morphTargetInfluences[eyeIndex] -= dt * blinkSpeed;
+                    if (morphTargetMesh.morphTargetInfluences[eyeIndex] <= 0) {
+                        morphTargetMesh.morphTargetInfluences[eyeIndex] = 0;
+                        morphTargetMesh.userData.isOpening = false;
+                        isBlinking = false;
+                    }
+                }
+            }
+        }
+
+        function updateIdleHead(dt) {
+            if (!headBone) return;
+
+            idleTime += dt;
+
+            // Perlin noise substitute - simple sine combination
+            const swayX = Math.sin(idleTime * 0.5) * 0.05; // Left-Right
+            const swayY = Math.cos(idleTime * 0.3) * 0.05; // Up-Down
+            const swayZ = Math.sin(idleTime * 0.7) * 0.02; // Tilt
+
+            // Interpolate towards sway
+            const targetQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(swayY + 0.1, swayX, swayZ));
+
+            headBone.quaternion.slerp(targetQ, 0.005);
+        }
+
+    </script>
+</body>
+
+</html>

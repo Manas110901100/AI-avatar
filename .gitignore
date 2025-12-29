@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+venv/
+.env
+.DS_Store
+apikey.db
+request_logs.txt
+response.mp3
+response.wav
+res/
