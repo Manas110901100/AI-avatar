@@ -97,5 +97,5 @@ LLM module in aimodels.py generates a natural language response.
 
 Text-to-speech in texttospeech.py converts the reply into audio.
 
-The front-end plays the audio and drives animations (visemes, eye blinks, gestures) to synchronize the avatar’s movement with the speech.[page:1]
+The front-end plays the audio and drives animations (visemes, eye blinks, gestures) to synchronize the avatar’s movement with the speech.
 
