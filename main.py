@@ -1,4 +1,8 @@
-from aimodels import generate_chat_response
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))  # TTS_PROVIDER, LIPSYNC and voice-service keys; see plan.md
+
+from aimodels import generate_performance
 from api_validator import validate_and_save_api_key
 from fastapi import Depends, FastAPI, Request
 from models import ApiKeyRequest, Base, ChatRequest, LogResponse, ConversationLog, ApiKeyResponse
@@ -8,8 +12,11 @@ from sqlalchemy.orm import Session
 import database
 from typing import List
 from fastapi.responses import FileResponse
-from texttospeech import mp3_to_wav_ffmpeg, WAV_FILE, run_rhubarb
+from voices import synthesize
+from performance import build_timeline
+from gestures import catalog
 import base64
+import tempfile
 
 
 app = FastAPI()
@@ -58,40 +65,36 @@ def get_chat_history(api_key_id: int, db: Session = Depends(get_db)):
         return []
     return logs
 
+@app.get("/gestures")
+def get_gestures():
+    return catalog()
+
 @app.post("/chat/speak")
 def chat_with_audio(request: ChatRequest, db: Session = Depends(get_db)):
-    
-    chat_result = generate_chat_response(
-        user_input=request.input, 
-        api_key_id=request.api_key_id, 
+
+    script = generate_performance(
+        user_input=request.input,
+        api_key_id=request.api_key_id,
         model_name=request.model,
         db=db
     )
-    
-    ai_text = chat_result.response
-    
-    output_filename = f"response_{request.api_key_id}.wav"
-    wav_file_path = mp3_to_wav_ffmpeg(ai_text)
-    
-    lip_sync_data = ""
-    try:
-        lip_sync_data = run_rhubarb(wav_file_path)
-        lip_sync_data = base64.b64encode(lip_sync_data.encode('utf-8')).decode('utf-8')
-    except Exception as e:
-        print(f"Rhubarb Error: {e}")
-        # Continue without lip sync data if it fails
-        lip_sync_data = ""
 
-    return FileResponse(
-        path=wav_file_path, 
-        media_type="audio/wav", 
-        filename="response.wav", 
-        headers={
-            "X-Animation-File": chat_result.animation,
-            "X-Response-Text": ai_text,
-            "X-Lip-Sync-Data": lip_sync_data
-        }
-    )
+    ai_text = script.spoken_text
+
+    # A folder per request, so simultaneous requests never share audio files
+    with tempfile.TemporaryDirectory() as workdir:
+        speech = synthesize(script, workdir)
+
+    return {
+        "text": ai_text,
+        "audio": base64.b64encode(speech.audio).decode("ascii"),
+        "audio_mime": speech.mime,
+        "lipsync": speech.lipsync,
+        "visemes": speech.visemes,
+        "blendshapes": speech.blendshapes,
+        "voice": speech.provider,
+        "timeline": build_timeline(script, speech.words, speech.lipsync),
+    }
 
 app.add_middleware(
     CORSMiddleware,

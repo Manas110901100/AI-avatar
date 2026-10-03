@@ -9,3 +9,4 @@ pydub
 langchain 
 langchain-openai
 sqlalchemy
+azure-cognitiveservices-speech

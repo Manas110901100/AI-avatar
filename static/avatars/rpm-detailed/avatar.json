@@ -1,0 +1,7 @@
+{
+    "id": "rpm-detailed",
+    "glb": "/static/avatars/rpm-detailed/avatar.glb",
+    "notes": "Built by tools/rig_upgrade.py from static/avatar.glb: 28 ARKit shapes, spherical eyes, forearm twist bones.",
+    "eyes": { "yaw": 0.45, "up": 0.35, "down": 0.3 },
+    "aliases": { "bones": {}, "morphs": {} }
+}
